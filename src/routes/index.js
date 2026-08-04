@@ -1,5 +1,5 @@
 const { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP } = require("../controllers/authController");
-const { handleCheckReceiver, handleSendMoney } = require("../controllers/transactionController");
+const { handleCheckReceiver, handleSendMoney, transactionHistory } = require("../controllers/transactionController");
 const { getBalance } = require("../controllers/walletController");
 const { authenticateToken } = require("../middleware/auth");
 
@@ -43,12 +43,20 @@ const routes = [
   {
     url: "/transaction/check-receiver",
     method: "POST",
+    middleware: authenticateToken,
     handler: handleCheckReceiver,
   },
   {
     url: "/transaction/send-money",
     method: "POST",
+    middleware: authenticateToken,
     handler: handleSendMoney,
+  },
+  {
+    url: "/transaction/history",
+    method: "GET",
+    middleware: authenticateToken,
+    handler: transactionHistory,
   },
 ];
 
