@@ -1,11 +1,13 @@
 const http = require("http");
-const { routes } = require("./src/routes");
+const { routes, baseUrl } = require("./src/routes");
 const { connectDB } = require("./src/config/db");
 
 connectDB();
 
 const server = http.createServer((req, res) => {
-  const route = routes.find(r => r.url === req.url && r.method === req.method);
+  const route = routes.find(
+    (r) => r.url === req.url.replace(baseUrl, '') && r.method === req.method,
+  );
   if (route) {
     route.handler(req, res);
   } else {
@@ -14,7 +16,6 @@ const server = http.createServer((req, res) => {
   }
 });
 
-server.listen(8000, () => {
-  console.log("Server is running on port 8000");
+server.listen(8080, () => {
+  console.log("Server is running on port 8080");
 });
-

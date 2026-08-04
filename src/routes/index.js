@@ -1,6 +1,8 @@
 const { handleSignup, handleVerifyOTP, handleLogin } = require("../controllers/authController");
 const { handleCheckReceiver, handleSendMoney } = require("../controllers/transactionController");
 
+const baseUrl = '/api/v1';
+
 const routes = [
   {
     url: "/health",
@@ -37,4 +39,4 @@ const routes = [
   }
 ];
 
-module.exports = { routes };
+module.exports = { routes, baseUrl };
