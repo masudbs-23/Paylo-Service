@@ -20,7 +20,7 @@ const handleCheckReceiver = async (req, res) => {
       res.end(JSON.stringify({ error: "Can only send to Personal accounts" }));
       return;
     }
- 
+
     if (user.rows[0].id === req.user.userId) {
       res.end(JSON.stringify({ error: "Cannot send to yourself" }));
       return;
@@ -75,10 +75,29 @@ const handleSendMoney = async (req, res) => {
       [sender.rows[0].id],
     );
 
-    if (
-      senderWallet.rows.length === 0 ||
-      senderWallet.rows[0].balance < data.amount
-    ) {
+    if (senderWallet.rows.length === 0) {
+      res.end(JSON.stringify({ error: "Sender wallet not found" }));
+      return;
+    }
+
+    // Check sender wallet status
+    if (senderWallet.rows[0].status === "blocked") {
+      res.end(
+        JSON.stringify({
+          error: "Your wallet is blocked. No transactions allowed.",
+        }),
+      );
+      return;
+    }
+
+    if (senderWallet.rows[0].status === "frozen") {
+      res.end(
+        JSON.stringify({ error: "Your wallet is frozen. Cannot send money." }),
+      );
+      return;
+    }
+
+    if (senderWallet.rows[0].balance < data.amount) {
       res.end(JSON.stringify({ error: "Insufficient balance" }));
       return;
     }
@@ -87,6 +106,21 @@ const handleSendMoney = async (req, res) => {
       "SELECT * FROM wallets WHERE user_id = $1",
       [receiver.rows[0].id],
     );
+
+    if (receiverWallet.rows.length === 0) {
+      res.end(JSON.stringify({ error: "Receiver wallet not found" }));
+      return;
+    }
+
+    // Check receiver wallet status
+    if (receiverWallet.rows[0].status === "blocked") {
+      res.end(
+        JSON.stringify({
+          error: "Receiver wallet is blocked. Cannot receive money.",
+        }),
+      );
+      return;
+    }
 
     await pool.query("BEGIN");
 
@@ -129,7 +163,6 @@ const handleSendMoney = async (req, res) => {
   });
 };
 
-
 const transactionHistory = async (req, res) => {
   const { userId } = req.user;
   const transactions = await pool.query(
@@ -141,29 +174,31 @@ const transactionHistory = async (req, res) => {
      LEFT JOIN users r ON t.receiver_id = r.id
      WHERE t.sender_id = $1 OR t.receiver_id = $1
      ORDER BY t.created_at DESC`,
-    [userId]
+    [userId],
   );
-  
-  const formattedTransactions = transactions.rows.map(tx => {
+
+  const formattedTransactions = transactions.rows.map((tx) => {
     if (tx.sender_id === userId) {
       const { sender_name, sender_phone, ...rest } = tx;
       return {
         ...rest,
-        type: 'sent',
+        type: "sent",
       };
     } else {
       const { receiver_name, receiver_phone, ...rest } = tx;
       return {
         ...rest,
-        type: 'received',
+        type: "received",
       };
     }
   });
 
-  res.end(JSON.stringify({ 
-    message: "Transaction history", 
-    transactions: formattedTransactions 
-  }));
-}
+  res.end(
+    JSON.stringify({
+      message: "Transaction history",
+      transactions: formattedTransactions,
+    }),
+  );
+};
 
 module.exports = { handleCheckReceiver, handleSendMoney, transactionHistory };

@@ -28,6 +28,7 @@ const connectDB = async () => {
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
         balance DECIMAL(10, 2) DEFAULT 0.00,
+        status VARCHAR(20) DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);

@@ -1,6 +1,6 @@
 const { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP } = require("../controllers/authController");
 const { handleCheckReceiver, handleSendMoney, transactionHistory } = require("../controllers/transactionController");
-const { getBalance } = require("../controllers/walletController");
+const { getBalance, freezeWallet, unfreezeWallet, blockWallet, unblockWallet } = require("../controllers/walletController");
 const { authenticateToken } = require("../middleware/auth");
 
 const baseUrl = "/api/v1";
@@ -57,6 +57,30 @@ const routes = [
     method: "GET",
     middleware: authenticateToken,
     handler: transactionHistory,
+  },
+  {
+    url: "/wallet/freeze",
+    method: "POST",
+    middleware: authenticateToken,
+    handler: freezeWallet,
+  },
+  {
+    url: "/wallet/unfreeze",
+    method: "POST",
+    middleware: authenticateToken,
+    handler: unfreezeWallet,
+  },
+  {
+    url: "/wallet/block",
+    method: "POST",
+    middleware: authenticateToken,
+    handler: blockWallet,
+  },
+  {
+    url: "/wallet/unblock",
+    method: "POST",
+    middleware: authenticateToken,
+    handler: unblockWallet,
   },
 ];
 

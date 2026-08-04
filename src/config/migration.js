@@ -45,7 +45,7 @@ const autoMigrate = async (pool) => {
     `);
     const existingWalletColumns = walletsColumns.rows.map(row => row.column_name.toLowerCase());
     
-    const desiredWalletColumns = ['id', 'user_id', 'balance', 'created_at'];
+    const desiredWalletColumns = ['id', 'user_id', 'balance', 'status', 'created_at'];
     
     for (const column of desiredWalletColumns) {
       if (!existingWalletColumns.includes(column)) {
@@ -56,6 +56,8 @@ const autoMigrate = async (pool) => {
           await pool.query('ALTER TABLE wallets ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
         } else if (column === 'user_id') {
           await pool.query('ALTER TABLE wallets ADD COLUMN user_id INTEGER REFERENCES users(id)');
+        } else if (column === 'status') {
+          await pool.query('ALTER TABLE wallets ADD COLUMN status VARCHAR(20) DEFAULT \'active\'');
         }
       }
     }
