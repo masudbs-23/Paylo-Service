@@ -1,4 +1,4 @@
-const { pool } = require('./db');
+const { pool } = require('../config/db');
 
 const handleCheckReceiver = async (req, res) => {
   let body = '';

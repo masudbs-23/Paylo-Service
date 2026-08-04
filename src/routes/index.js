@@ -1,5 +1,5 @@
-const { handleSignup, handleVerifyOTP, handleLogin } = require("./authRoutes");
-const { handleCheckReceiver, handleSendMoney } = require("./transactions");
+const { handleSignup, handleVerifyOTP, handleLogin } = require("../controllers/authController");
+const { handleCheckReceiver, handleSendMoney } = require("../controllers/transactionController");
 
 const routes = [
   {

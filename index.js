@@ -1,7 +1,6 @@
-console.log("Hello CodeSandbox");
 const http = require("http");
-const { routes } = require("./routes");
-const { connectDB } = require("./db");
+const { routes } = require("./src/routes");
+const { connectDB } = require("./src/config/db");
 
 connectDB();
 
@@ -19,4 +18,3 @@ server.listen(8000, () => {
   console.log("Server is running on port 8000");
 });
 
-console.log("server is running");

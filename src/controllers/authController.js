@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const { pool } = require('./db');
+const { pool } = require('../config/db');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
