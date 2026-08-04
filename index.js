@@ -6,10 +6,14 @@ connectDB();
 
 const server = http.createServer((req, res) => {
   const route = routes.find(
-    (r) => r.url === req.url.replace(baseUrl, '') && r.method === req.method,
+    (r) => r.url === req.url.replace(baseUrl, "") && r.method === req.method,
   );
   if (route) {
-    route.handler(req, res);
+    if (route.middleware) {
+      route.middleware(req, res, () => route.handler(req, res));
+    } else {
+      route.handler(req, res);
+    }
   } else {
     res.writeHead(404);
     res.end("Not Found");
