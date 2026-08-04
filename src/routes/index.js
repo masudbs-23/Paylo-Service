@@ -1,7 +1,8 @@
-const { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP, saveFcmToken } = require("../controllers/authController");
+const { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP, saveFcmToken, updateProfileImage } = require("../controllers/authController");
 const { handleCheckReceiver, handleSendMoney, transactionHistory } = require("../controllers/transactionController");
 const { getBalance, freezeWallet, unfreezeWallet, blockWallet, unblockWallet } = require("../controllers/walletController");
 const { authenticateToken } = require("../middleware/auth");
+const { handleFileUpload } = require("../middleware/fileUpload");
 
 const baseUrl = "/api/v1";
 
@@ -39,6 +40,12 @@ const routes = [
     method: "POST",
     middleware: authenticateToken,
     handler: saveFcmToken,
+  },
+  {
+    url: "/auth/update-profile-image",
+    method: "POST",
+    middleware: [handleFileUpload, authenticateToken],
+    handler: updateProfileImage,
   },
   {
     url: "/wallet/balance",

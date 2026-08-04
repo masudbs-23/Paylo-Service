@@ -10,7 +10,21 @@ const server = http.createServer((req, res) => {
   );
   if (route) {
     if (route.middleware) {
-      route.middleware(req, res, () => route.handler(req, res));
+      const middlewareArray = Array.isArray(route.middleware) ? route.middleware : [route.middleware];
+      let index = 0;
+      
+      const runMiddleware = () => {
+        if (index < middlewareArray.length) {
+          middlewareArray[index](req, res, () => {
+            index++;
+            runMiddleware();
+          });
+        } else {
+          route.handler(req, res);
+        }
+      };
+      
+      runMiddleware();
     } else {
       route.handler(req, res);
     }

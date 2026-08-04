@@ -1,6 +1,8 @@
 const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 const { pool } = require("../config/db");
+const { uploadImageToCloudinary, deleteImageFromCloudinary } = require("../helpers/imageUpload");
+const { cleanupFile } = require("../middleware/fileUpload");
 
 const JWT_SECRET = "masud924";
 
@@ -197,7 +199,7 @@ const saveFcmToken = async (req, res) => {
   req.on("data", (chunk) => (body += chunk));
   req.on("end", async () => {
     const data = JSON.parse(body);
-    
+
     try {
       const result = await pool.query(
         "UPDATE users SET fcm_token = $1 WHERE id = $2 RETURNING *",
@@ -220,4 +222,68 @@ const saveFcmToken = async (req, res) => {
   });
 };
 
-module.exports = { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP, saveFcmToken };
+const updateProfileImage = async (req, res) => {
+  try {
+    // Check if file was uploaded
+    if (!req.files || !req.files.profileImage) {
+      res.end(JSON.stringify({ errorMessage: "No image provided" }));
+      return;
+    }
+
+    const uploadedFile = req.files.profileImage;
+
+    // Get current user to check for existing profile image
+    const currentUser = await pool.query(
+      "SELECT profile_image FROM users WHERE id = $1",
+      [req.user.userId]
+    );
+
+    if (currentUser.rows.length === 0) {
+      res.end(JSON.stringify({ errorMessage: "User not found" }));
+      cleanupFile(uploadedFile.filepath);
+      return;
+    }
+
+    // Delete old image if exists
+    if (currentUser.rows[0].profile_image) {
+      try {
+        // Extract public ID from Cloudinary URL
+        // Cloudinary URL format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/public_id.jpg
+        const urlParts = currentUser.rows[0].profile_image.split('/');
+        const fileName = urlParts[urlParts.length - 1];
+        const publicId = fileName.split('.')[0];
+        await deleteImageFromCloudinary(`profile_images/${publicId}`);
+      } catch (error) {
+        console.error("Error deleting old image:", error);
+        // Continue with upload even if delete fails
+      }
+    }
+
+    // Upload new image
+    const uploadResult = await uploadImageToCloudinary(uploadedFile.filepath);
+
+    // Clean up temporary file
+    cleanupFile(uploadedFile.filepath);
+
+    // Update user with new image URL
+    const result = await pool.query(
+      "UPDATE users SET profile_image = $1 WHERE id = $2 RETURNING *",
+      [uploadResult.url, req.user.userId]
+    );
+
+    res.end(
+      JSON.stringify({
+        successMessage: "Profile image updated successfully",
+        profileImage: result.rows[0].profile_image,
+      })
+    );
+  } catch (error) {
+    // Clean up file if error occurred
+    if (req.files && req.files.profileImage) {
+      cleanupFile(req.files.profileImage.filepath);
+    }
+    res.end(JSON.stringify({ errorMessage: error.message || "Error updating profile image" }));
+  }
+};
+
+module.exports = { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP, saveFcmToken, updateProfileImage };
