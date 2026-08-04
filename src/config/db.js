@@ -19,7 +19,8 @@ const connectDB = async () => {
         profile_image VARCHAR(500),
         user_type VARCHAR(20) DEFAULT 'Personal',
         otp VARCHAR(10),
-        isVerified BOOLEAN DEFAULT FALSE
+        isVerified BOOLEAN DEFAULT FALSE,
+        fcm_token TEXT
       )
     `);
     

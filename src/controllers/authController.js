@@ -64,7 +64,7 @@ const handleVerifyOTP = async (req, res) => {
   req.on("data", (chunk) => (body += chunk));
   req.on("end", async () => {
     const data = JSON.parse(body);
-    const user = await pool.query("SELECT * FROM users WHERE phone = $1", [
+    const user = await pool.query("SELECT id, phone, pin, name, profile_image, user_type, otp, isverified, last_otp_sent_at, fcm_token FROM users WHERE phone = $1", [
       data.phone,
     ]);
 
@@ -106,7 +106,7 @@ const handleLogin = async (req, res) => {
   req.on("end", async () => {
     const data = JSON.parse(body);
     const user = await pool.query(
-      "SELECT * FROM users WHERE phone = $1 AND pin = $2",
+      "SELECT id, phone, pin, name, profile_image, user_type, otp, isverified, last_otp_sent_at, fcm_token FROM users WHERE phone = $1 AND pin = $2",
       [data.phone, data.pin],
     );
 
@@ -192,4 +192,32 @@ const handleResendOTP = async (req, res) => {
   });
 };
 
-module.exports = { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP };
+const saveFcmToken = async (req, res) => {
+  let body = "";
+  req.on("data", (chunk) => (body += chunk));
+  req.on("end", async () => {
+    const data = JSON.parse(body);
+    
+    try {
+      const result = await pool.query(
+        "UPDATE users SET fcm_token = $1 WHERE id = $2 RETURNING *",
+        [data.fcmToken, req.user.userId]
+      );
+
+      if (result.rows.length === 0) {
+        res.end(JSON.stringify({ errorMessage: "User not found" }));
+        return;
+      }
+
+      res.end(
+        JSON.stringify({
+          successMessage: "FCM token saved successfully",
+        })
+      );
+    } catch (error) {
+      res.end(JSON.stringify({ errorMessage: "Error saving FCM token" }));
+    }
+  });
+};
+
+module.exports = { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP, saveFcmToken };

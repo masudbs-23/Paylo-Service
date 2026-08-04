@@ -6,7 +6,7 @@ const autoMigrate = async (pool) => {
     `);
     const existingColumns = usersColumns.rows.map(row => row.column_name.toLowerCase());
     
-    const desiredUsersColumns = ['id', 'phone', 'pin', 'name', 'profile_image', 'user_type', 'otp', 'isverified', 'last_otp_sent_at'];
+    const desiredUsersColumns = ['id', 'phone', 'pin', 'name', 'profile_image', 'user_type', 'otp', 'isverified', 'last_otp_sent_at', 'fcm_token'];
     
     for (const column of desiredUsersColumns) {
       if (!existingColumns.includes(column)) {
@@ -25,6 +25,8 @@ const autoMigrate = async (pool) => {
           await pool.query('ALTER TABLE users ADD COLUMN pin VARCHAR(10)');
         } else if (column === 'last_otp_sent_at') {
           await pool.query('ALTER TABLE users ADD COLUMN last_otp_sent_at TIMESTAMP');
+        } else if (column === 'fcm_token') {
+          await pool.query('ALTER TABLE users ADD COLUMN fcm_token TEXT');
         }
       }
     }

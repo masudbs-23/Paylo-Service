@@ -1,4 +1,4 @@
-const { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP } = require("../controllers/authController");
+const { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP, saveFcmToken } = require("../controllers/authController");
 const { handleCheckReceiver, handleSendMoney, transactionHistory } = require("../controllers/transactionController");
 const { getBalance, freezeWallet, unfreezeWallet, blockWallet, unblockWallet } = require("../controllers/walletController");
 const { authenticateToken } = require("../middleware/auth");
@@ -33,6 +33,12 @@ const routes = [
     url: "/auth/resend-otp",
     method: "POST",
     handler: handleResendOTP,
+  },
+  {
+    url: "/auth/save-fcm-token",
+    method: "POST",
+    middleware: authenticateToken,
+    handler: saveFcmToken,
   },
   {
     url: "/wallet/balance",

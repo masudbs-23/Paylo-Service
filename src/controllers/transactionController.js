@@ -1,4 +1,5 @@
 const { pool } = require("../config/db");
+const { sendMoneyReceivedNotification, sendMoneySentNotification } = require("../helpers/notificationHelper");
 
 const handleCheckReceiver = async (req, res) => {
   let body = "";
@@ -7,7 +8,7 @@ const handleCheckReceiver = async (req, res) => {
     const data = JSON.parse(body);
 
     const user = await pool.query(
-      "SELECT id, phone, name, profile_image, user_type FROM users WHERE phone = $1",
+      "SELECT id, phone, name, profile_image, user_type, fcm_token FROM users WHERE phone = $1",
       [data.phone],
     );
 
@@ -41,7 +42,7 @@ const handleSendMoney = async (req, res) => {
   req.on("end", async () => {
     const data = JSON.parse(body);
 
-    const sender = await pool.query("SELECT * FROM users WHERE id = $1", [
+    const sender = await pool.query("SELECT id, phone, pin, name, profile_image, user_type, fcm_token FROM users WHERE id = $1", [
       req.user.userId,
     ]);
 
@@ -56,7 +57,7 @@ const handleSendMoney = async (req, res) => {
     }
 
     const receiver = await pool.query(
-      "SELECT * FROM users WHERE phone = $1 AND user_type = $2",
+      "SELECT id, phone, name, profile_image, user_type, fcm_token FROM users WHERE phone = $1 AND user_type = $2",
       [data.receiverPhone, "Personal"],
     );
 
@@ -147,6 +148,27 @@ const handleSendMoney = async (req, res) => {
       );
 
       await pool.query("COMMIT");
+
+      // Send notifications to both sender and receiver
+      try {
+        await sendMoneyReceivedNotification(
+          receiver.rows[0].fcm_token,
+          sender.rows[0].name,
+          data.amount
+        );
+      } catch (error) {
+        console.error("Failed to send notification to receiver:", error);
+      }
+
+      try {
+        await sendMoneySentNotification(
+          sender.rows[0].fcm_token,
+          receiver.rows[0].name,
+          data.amount
+        );
+      } catch (error) {
+        console.error("Failed to send notification to sender:", error);
+      }
 
       res.end(
         JSON.stringify({
