@@ -32,6 +32,18 @@ const connectDB = async () => {
       )
     `);
     
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS transactions (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER REFERENCES users(id),
+        receiver_id INTEGER REFERENCES users(id),
+        amount DECIMAL(10, 2) NOT NULL,
+        transaction_type VARCHAR(20) DEFAULT 'send_money',
+        status VARCHAR(20) DEFAULT 'completed',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
     await autoMigrate(pool);
   } catch (err) {
     console.error("Database connection failed", err);

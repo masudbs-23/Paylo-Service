@@ -87,6 +87,11 @@ const handleSendMoney = async (req, res) => {
         [data.amount, receiver.rows[0].id]
       );
       
+      await pool.query(
+        'INSERT INTO transactions (sender_id, receiver_id, amount, transaction_type, status) VALUES ($1, $2, $3, $4, $5)',
+        [sender.rows[0].id, receiver.rows[0].id, data.amount, 'send_money', 'completed']
+      );
+      
       await pool.query('COMMIT');
       
       res.end(JSON.stringify({ 
