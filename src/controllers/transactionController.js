@@ -132,9 +132,38 @@ const handleSendMoney = async (req, res) => {
 
 const transactionHistory = async (req, res) => {
   const { userId } = req.user;
-  const transactions=await pool.query("SELECT * FROM transactions WHERE sender_id =$1 OR receiver_id=$1",[userId])
-  res.end(JSON.stringify({ message: "Transaction history", transactions: transactions.rows }));
+  const transactions = await pool.query(
+    `SELECT t.*, 
+      s.name as sender_name, s.phone as sender_phone,
+      r.name as receiver_name, r.phone as receiver_phone
+     FROM transactions t
+     LEFT JOIN users s ON t.sender_id = s.id
+     LEFT JOIN users r ON t.receiver_id = r.id
+     WHERE t.sender_id = $1 OR t.receiver_id = $1
+     ORDER BY t.created_at DESC`,
+    [userId]
+  );
   
+  const formattedTransactions = transactions.rows.map(tx => {
+    if (tx.sender_id === userId) {
+      const { sender_name, sender_phone, ...rest } = tx;
+      return {
+        ...rest,
+        type: 'sent',
+      };
+    } else {
+      const { receiver_name, receiver_phone, ...rest } = tx;
+      return {
+        ...rest,
+        type: 'received',
+      };
+    }
+  });
+
+  res.end(JSON.stringify({ 
+    message: "Transaction history", 
+    transactions: formattedTransactions 
+  }));
 }
 
 module.exports = { handleCheckReceiver, handleSendMoney, transactionHistory };
