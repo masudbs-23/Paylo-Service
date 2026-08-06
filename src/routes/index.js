@@ -1,5 +1,5 @@
 const { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP, saveFcmToken, updateProfileImage } = require("../controllers/authController");
-const { handleCheckReceiver, handleSendMoney, handleMerchantCheck, handleCheckAgent, handlePaymentLink, transactionHistory } = require("../controllers/transactionController");
+const { handleCheckReceiver, handleSendMoney, handleMerchantCheck, handleCheckAgent, handlePaymentLink, handleCashout, transactionHistory } = require("../controllers/transactionController");
 const { getBalance, freezeWallet, unfreezeWallet, blockWallet, unblockWallet } = require("../controllers/walletController");
 const { authenticateToken } = require("../middleware/auth");
 const { handleFileUpload } = require("../middleware/fileUpload");
@@ -76,6 +76,12 @@ const routes = [
     method: "POST",
     middleware: authenticateToken,
     handler: handlePaymentLink,
+  },
+  {
+    url: "/transaction/cashout",
+    method: "POST",
+    middleware: authenticateToken,
+    handler: handleCashout,
   },
   {
     url: "/transaction/send-money",
