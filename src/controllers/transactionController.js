@@ -154,6 +154,9 @@ const executeTransaction = async (req, res, receiverType, transactionType) => {
 
       await pool.query("COMMIT");
 
+      console.log("Sender FCM Token:", sender.rows[0].fcm_token);
+      console.log("Receiver FCM Token:", receiver.rows[0].fcm_token);
+
       try {
         await sendMoneyReceivedNotification(
           receiver.rows[0].fcm_token,
