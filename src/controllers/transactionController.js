@@ -1,5 +1,8 @@
 const { pool } = require("../config/db");
-const { sendMoneyReceivedNotification, sendMoneySentNotification } = require("../helpers/notificationHelper");
+const {
+  sendMoneyReceivedNotification,
+  sendMoneySentNotification,
+} = require("../helpers/notificationHelper");
 
 const handleCheckReceiver = async (req, res) => {
   let body = "";
@@ -42,9 +45,10 @@ const handleSendMoney = async (req, res) => {
   req.on("end", async () => {
     const data = JSON.parse(body);
 
-    const sender = await pool.query("SELECT id, phone, pin, name, profile_image, user_type, fcm_token FROM users WHERE id = $1", [
-      req.user.userId,
-    ]);
+    const sender = await pool.query(
+      "SELECT id, phone, pin, name, profile_image, user_type, fcm_token FROM users WHERE id = $1",
+      [req.user.userId],
+    );
 
     if (sender.rows.length === 0) {
       res.end(JSON.stringify({ error: "Sender not found" }));
@@ -154,6 +158,224 @@ const handleSendMoney = async (req, res) => {
         await sendMoneyReceivedNotification(
           receiver.rows[0].fcm_token,
           sender.rows[0].name,
+          data.amount,
+        );
+      } catch (error) {
+        console.error("Failed to send notification to receiver:", error);
+      }
+
+      try {
+        await sendMoneySentNotification(
+          sender.rows[0].fcm_token,
+          receiver.rows[0].name,
+          data.amount,
+        );
+      } catch (error) {
+        console.error("Failed to send notification to sender:", error);
+      }
+
+      res.end(
+        JSON.stringify({
+          message: "Send money successful",
+          amount: data.amount,
+          receiverPhone: receiver.rows[0].phone,
+          receiverName: receiver.rows[0].name,
+        }),
+      );
+    } catch (err) {
+      await pool.query("ROLLBACK");
+      res.end(JSON.stringify({ error: "Transaction failed" }));
+    }
+  });
+};
+
+
+const handleMerchantCheck = async (req, res) => {
+  let body = "";
+  req.on("data", (chunk) => (body += chunk));
+  req.on("end", async () => {
+    const data = JSON.parse(body);
+
+    const user = await pool.query(
+      "SELECT id, phone, name, profile_image, user_type, fcm_token FROM users WHERE phone = $1",
+      [data.phone],
+    );
+
+    if (user.rows.length === 0) {
+      res.end(JSON.stringify({ error: "User not found" }));
+      return;
+    }
+
+    if (user.rows[0].user_type !== "Merchant") {
+      res.end(JSON.stringify({ error: "User is not a Merchant" }));
+      return;
+    }
+
+    if (user.rows[0].id === req.user.userId) {
+      res.end(JSON.stringify({ error: "Cannot send to yourself" }));
+      return;
+    }
+
+    res.end(
+      JSON.stringify({
+        message: "Merchant found",
+        merchant: user.rows[0],
+      }),
+    );
+  });
+};
+
+const handleCheckAgent = async (req, res) => {
+  let body = "";
+  req.on("data", (chunk) => (body += chunk));
+  req.on("end", async () => {
+    const data = JSON.parse(body);
+
+    const user = await pool.query(
+      "SELECT id, phone, name, profile_image, user_type, fcm_token FROM users WHERE phone = $1",
+      [data.phone],
+    );
+
+    if (user.rows.length === 0) {
+      res.end(JSON.stringify({ error: "User not found" }));
+      return;
+    }
+
+    if (user.rows[0].user_type !== "Agent") {
+      res.end(JSON.stringify({ error: "User is not an Agent" }));
+      return;
+    }
+
+    if (user.rows[0].id === req.user.userId) {
+      res.end(JSON.stringify({ error: "Cannot send to yourself" }));
+      return;
+    }
+
+    res.end(
+      JSON.stringify({
+        message: "Agent found",
+        agent: user.rows[0],
+      }),
+    );
+  });
+};
+const handlePaymentLink = async (req, res) => {
+  let body = "";
+  req.on("data", (chunk) => (body += chunk));
+  req.on("end", async () => {
+    const data = JSON.parse(body);
+
+    const sender = await pool.query(
+      "SELECT id, phone, pin, name, profile_image, user_type, fcm_token FROM users WHERE id = $1",
+      [req.user.userId]
+    );
+    if (sender.rows.length === 0) {
+      res.end(JSON.stringify({ error: "User not found" }));
+      return;
+    }
+
+    if (sender.rows[0].pin !== data.pin) {
+      res.end(JSON.stringify({ error: "Invalid PIN" }));
+      return;
+    }
+
+    const receiver = await pool.query(
+      "SELECT id, phone, name, profile_image, user_type, fcm_token FROM users WHERE phone = $1",
+      [data.phone]
+    );
+    if (receiver.rows.length === 0) {
+      res.end(JSON.stringify({ error: "Receiver not found" }));
+      return;
+    }
+
+    if (receiver.rows[0].user_type !== "Merchant") {
+      res.end(JSON.stringify({ error: "Payment link can only be created for Merchant accounts" }));
+      return;
+    }
+
+    if (receiver.rows[0].id === req.user.userId) {
+      res.end(JSON.stringify({ error: "Cannot create payment link for yourself" }));
+      return;
+    }
+
+    const senderWallet = await pool.query(
+      "SELECT * FROM wallets WHERE user_id = $1",
+      [sender.rows[0].id]
+    );
+
+    if (senderWallet.rows.length === 0) {
+      res.end(JSON.stringify({ error: "Sender wallet not found" }));
+      return;
+    }
+
+    if (senderWallet.rows[0].status === "blocked") {
+      res.end(
+        JSON.stringify({
+          error: "Your wallet is blocked. No transactions allowed.",
+        })
+      );
+      return;
+    }
+
+    if (senderWallet.rows[0].status === "frozen") {
+      res.end(JSON.stringify({ error: "Your wallet is frozen. Cannot send money." }));
+      return;
+    }
+
+    if (senderWallet.rows[0].balance < data.amount) {
+      res.end(JSON.stringify({ error: "Insufficient balance" }));
+      return;
+    }
+
+    const receiverWallet = await pool.query(
+      "SELECT * FROM wallets WHERE user_id = $1",
+      [receiver.rows[0].id]
+    );
+
+    if (receiverWallet.rows.length === 0) {
+      res.end(JSON.stringify({ error: "Receiver wallet not found" }));
+      return;
+    }
+
+    if (receiverWallet.rows[0].status === "blocked") {
+      res.end(
+        JSON.stringify({
+          error: "Receiver wallet is blocked. Cannot receive money.",
+        })
+      );
+      return;
+    }
+
+    await pool.query("BEGIN");
+
+    try {
+      await pool.query(
+        "UPDATE wallets SET balance = balance - $1 WHERE user_id = $2",
+        [data.amount, sender.rows[0].id]
+      );
+
+      await pool.query(
+        "UPDATE wallets SET balance = balance + $1 WHERE user_id = $2",
+        [data.amount, receiver.rows[0].id]
+      );
+
+      await pool.query(
+        "INSERT INTO transactions (sender_id, receiver_id, amount, transaction_type, status) VALUES ($1, $2, $3, $4, $5)",
+        [
+          sender.rows[0].id,
+          receiver.rows[0].id,
+          data.amount,
+          "payment_link",
+          "completed",
+        ]
+      );
+
+      await pool.query("COMMIT");
+
+      try {
+        await sendMoneyReceivedNotification(
+          receiver.rows[0].fcm_token,
+          sender.rows[0].name,
           data.amount
         );
       } catch (error) {
@@ -172,11 +394,11 @@ const handleSendMoney = async (req, res) => {
 
       res.end(
         JSON.stringify({
-          message: "Send money successful",
+          message: "Payment link transaction successful",
           amount: data.amount,
           receiverPhone: receiver.rows[0].phone,
           receiverName: receiver.rows[0].name,
-        }),
+        })
       );
     } catch (err) {
       await pool.query("ROLLBACK");
@@ -223,4 +445,4 @@ const transactionHistory = async (req, res) => {
   );
 };
 
-module.exports = { handleCheckReceiver, handleSendMoney, transactionHistory };
+module.exports = { handleCheckReceiver, handleSendMoney, handleMerchantCheck, transactionHistory ,handleCheckAgent,handlePaymentLink};
