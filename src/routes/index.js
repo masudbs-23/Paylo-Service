@@ -1,8 +1,10 @@
 const { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP, saveFcmToken, updateProfileImage } = require("../controllers/authController");
 const { handleCheckReceiver, handleSendMoney, handleMerchantCheck, handleCheckAgent, handlePaymentLink, handleCashout, transactionHistory } = require("../controllers/transactionController");
 const { getBalance, freezeWallet, unfreezeWallet, blockWallet, unblockWallet } = require("../controllers/walletController");
+const { createNotification, getNotifications, createAdmin, disableAdmin, listAdmins, toggleAdminWalletPermission } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/auth");
 const { handleFileUpload } = require("../middleware/fileUpload");
+const { requireRole, requireSuperAdmin, requireWalletStatusPermission } = require("../middleware/roleAuth");
 
 const baseUrl = "/api/v1";
 
@@ -98,26 +100,62 @@ const routes = [
   {
     url: "/wallet/freeze",
     method: "POST",
-    middleware: authenticateToken,
+    middleware: [authenticateToken, requireWalletStatusPermission],
     handler: freezeWallet,
   },
   {
     url: "/wallet/unfreeze",
     method: "POST",
-    middleware: authenticateToken,
+    middleware: [authenticateToken, requireWalletStatusPermission],
     handler: unfreezeWallet,
   },
   {
     url: "/wallet/block",
     method: "POST",
-    middleware: authenticateToken,
+    middleware: [authenticateToken, requireWalletStatusPermission],
     handler: blockWallet,
   },
   {
     url: "/wallet/unblock",
     method: "POST",
-    middleware: authenticateToken,
+    middleware: [authenticateToken, requireWalletStatusPermission],
     handler: unblockWallet,
+  },
+  {
+    url: "/admin/notification/create",
+    method: "POST",
+    middleware: [handleFileUpload, authenticateToken, requireRole(["Admin", "SuperAdmin"])],
+    handler: createNotification,
+  },
+  {
+    url: "/admin/notification/list",
+    method: "GET",
+    middleware: [authenticateToken, requireRole(["Admin", "SuperAdmin"])],
+    handler: getNotifications,
+  },
+  {
+    url: "/admin/create",
+    method: "POST",
+    middleware: [authenticateToken, requireSuperAdmin],
+    handler: createAdmin,
+  },
+  {
+    url: "/admin/disable",
+    method: "POST",
+    middleware: [authenticateToken, requireSuperAdmin],
+    handler: disableAdmin,
+  },
+  {
+    url: "/admin/list",
+    method: "GET",
+    middleware: [authenticateToken, requireSuperAdmin],
+    handler: listAdmins,
+  },
+  {
+    url: "/admin/permission/wallet-status",
+    method: "POST",
+    middleware: [authenticateToken, requireSuperAdmin],
+    handler: toggleAdminWalletPermission,
   },
 ];
 

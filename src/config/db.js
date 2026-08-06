@@ -17,7 +17,7 @@ const connectDB = async () => {
         pin VARCHAR(10) NOT NULL,
         name VARCHAR(255),
         profile_image VARCHAR(500),
-        user_type VARCHAR(20) DEFAULT 'Personal',
+        user_type VARCHAR(20) DEFAULT 'Personal' CHECK (user_type IN ('Personal', 'Agent', 'Merchant', 'Admin', 'SuperAdmin')),
         otp VARCHAR(10),
         isVerified BOOLEAN DEFAULT FALSE,
         fcm_token TEXT
@@ -44,6 +44,33 @@ const connectDB = async () => {
         status VARCHAR(20) DEFAULT 'completed',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        image_url VARCHAR(500),
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_permissions (
+        id SERIAL PRIMARY KEY,
+        can_change_wallet_status BOOLEAN DEFAULT TRUE,
+        updated_by INTEGER REFERENCES users(id),
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insert default permissions if not exists
+    await pool.query(`
+      INSERT INTO admin_permissions (can_change_wallet_status, updated_by)
+      SELECT TRUE, NULL
+      WHERE NOT EXISTS (SELECT 1 FROM admin_permissions)
     `);
     
     await autoMigrate(pool);
