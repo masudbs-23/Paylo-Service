@@ -1,6 +1,7 @@
 const { pool } = require("../config/db");
 const { uploadImageToCloudinary, deleteImageFromCloudinary } = require("../helpers/imageUpload");
 const { cleanupFile } = require("../middleware/fileUpload");
+const { sendBulkNotification } = require("../helpers/notificationHelper");
 
 const createNotification = async (req, res) => {
   try {
@@ -17,12 +18,13 @@ const createNotification = async (req, res) => {
       cleanupFile(uploadedFile.filepath);
     }
 
-    // Get title and description from fields
-    const title = req.fields.title;
+    // Get title and description from fields (both optional)
+    const title = req.fields.title || null;
     const description = req.fields.description || null;
 
-    if (!title) {
-      res.end(JSON.stringify({ errorMessage: "Title is required" }));
+    // At least title or description should be provided
+    if (!title && !description) {
+      res.end(JSON.stringify({ errorMessage: "Title or description is required" }));
       return;
     }
 
@@ -31,10 +33,34 @@ const createNotification = async (req, res) => {
       [title, description, imageUrl, req.user.userId]
     );
 
+    // Get all FCM tokens from users table
+    const fcmTokensResult = await pool.query(
+      "SELECT fcm_token FROM users WHERE fcm_token IS NOT NULL AND fcm_token != ''"
+    );
+
+    const fcmTokens = fcmTokensResult.rows.map(row => row.fcm_token);
+
+    // Send push notifications to all devices with FCM tokens
+    if (fcmTokens.length > 0) {
+      const notificationTitle = title || "New Notification";
+      const notificationBody = description || "You have a new notification";
+      
+      await sendBulkNotification(
+        fcmTokens,
+        notificationTitle,
+        notificationBody,
+        {
+          type: "admin_notification",
+          notification_id: result.rows[0].id.toString(),
+        }
+      );
+    }
+
     res.end(
       JSON.stringify({
-        successMessage: "Notification created successfully",
+        successMessage: "Notification created successfully and sent to all devices",
         notification: result.rows[0],
+        devicesNotified: fcmTokens.length,
       })
     );
   } catch (error) {
@@ -63,6 +89,26 @@ const getNotifications = async (req, res) => {
     );
   } catch (error) {
     res.end(JSON.stringify({ errorMessage: "Error retrieving notifications" }));
+  }
+};
+
+const getPublicNotifications = async (req, res) => {
+  try {
+    const notifications = await pool.query(
+      `SELECT id, title, description, image_url, created_at
+       FROM notifications
+       ORDER BY created_at DESC
+       LIMIT 20`
+    );
+
+    res.end(
+      JSON.stringify({
+        successMessage: "Public notifications retrieved successfully",
+        notifications: notifications.rows,
+      })
+    );
+  } catch (error) {
+    res.end(JSON.stringify({ errorMessage: "Error retrieving public notifications" }));
   }
 };
 
@@ -203,6 +249,7 @@ const toggleAdminWalletPermission = async (req, res) => {
 module.exports = {
   createNotification,
   getNotifications,
+  getPublicNotifications,
   createAdmin,
   disableAdmin,
   listAdmins,

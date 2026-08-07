@@ -1,7 +1,7 @@
 const { handleSignup, handleVerifyOTP, handleLogin, handleResendOTP, saveFcmToken, updateProfileImage } = require("../controllers/authController");
 const { handleCheckReceiver, handleSendMoney, handleMerchantCheck, handleCheckAgent, handlePaymentLink, handleCashout, transactionHistory } = require("../controllers/transactionController");
 const { getBalance, freezeWallet, unfreezeWallet, blockWallet, unblockWallet } = require("../controllers/walletController");
-const { createNotification, getNotifications, createAdmin, disableAdmin, listAdmins, toggleAdminWalletPermission } = require("../controllers/adminController");
+const { createNotification, getNotifications, getPublicNotifications, createAdmin, disableAdmin, listAdmins, toggleAdminWalletPermission } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/auth");
 const { handleFileUpload } = require("../middleware/fileUpload");
 const { requireRole, requireSuperAdmin, requireWalletStatusPermission } = require("../middleware/roleAuth");
@@ -132,6 +132,11 @@ const routes = [
     method: "GET",
     middleware: [authenticateToken, requireRole(["Admin", "SuperAdmin"])],
     handler: getNotifications,
+  },
+  {
+    url: "/public/notifications",
+    method: "GET",
+    handler: getPublicNotifications,
   },
   {
     url: "/admin/create",
